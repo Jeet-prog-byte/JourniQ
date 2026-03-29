@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'journiq_secret_key_2024';
 

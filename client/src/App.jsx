@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
+import Chatbot from './components/Chatbot';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
             } />
           </Routes>
         </main>
+        <Chatbot />
         <Footer />
       </BrowserRouter>
     </AuthProvider>
