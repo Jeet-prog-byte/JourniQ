@@ -1,9 +1,22 @@
-const express = require('express');
-const router = express.Router();
-const { getDb, saveDb } = require('../config/db');
-const { authMiddleware } = require('../middleware/auth');
+const { getDb } = require('./config/db');
+const { authMiddleware } = require('./middleware/auth');
 
-router.post('/', authMiddleware, async (req, res) => {
+export default async function handler(req, res) {
+  const urlParts = req.url.split('?')[0].split('/').filter(Boolean);
+  const lastPart = urlParts[urlParts.length - 1];
+
+  if (req.method === 'POST') {
+    if (!authMiddleware(req, res)) return;
+    return addReview(req, res);
+  } else if (req.method === 'GET') {
+    req.params = { packageId: lastPart };
+    return getReviews(req, res);
+  }
+
+  return res.status(404).json({ error: 'Not Found' });
+}
+
+async function addReview(req, res) {
   try {
     const { package_id, rating, comment } = req.body;
 
@@ -18,14 +31,11 @@ router.post('/', authMiddleware, async (req, res) => {
     const db = await getDb();
     db.run("INSERT INTO reviews (user_id, package_id, rating, comment) VALUES (?, ?, ?, ?)",
       [req.user.id, package_id, rating, comment || '']);
-    saveDb();
 
-    // Update package average rating
     const avgResult = db.exec("SELECT AVG(rating) FROM reviews WHERE package_id = ?", [package_id]);
     if (avgResult.length > 0) {
       const avgRating = Math.round(avgResult[0].values[0][0] * 10) / 10;
       db.run("UPDATE packages SET rating = ? WHERE id = ?", [avgRating, package_id]);
-      saveDb();
     }
 
     res.status(201).json({ message: 'Review added successfully.' });
@@ -33,9 +43,9 @@ router.post('/', authMiddleware, async (req, res) => {
     console.error('Review create error:', err);
     res.status(500).json({ error: 'Server error.' });
   }
-});
+}
 
-router.get('/:packageId', async (req, res) => {
+async function getReviews(req, res) {
   try {
     const db = await getDb();
     const result = db.exec(`
@@ -59,6 +69,4 @@ router.get('/:packageId', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Server error.' });
   }
-});
-
-module.exports = router;
+}

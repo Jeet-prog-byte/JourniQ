@@ -1,4 +1,25 @@
-const { getDb, saveDb } = require('../config/db');
+const { getDb, saveDb } = require('./config/db');
+const { authMiddleware } = require('./middleware/auth');
+
+export default async function handler(req, res) {
+  if (!authMiddleware(req, res)) return;
+
+  const urlParts = req.url.split('?')[0].split('/').filter(Boolean);
+  const lastPart = urlParts[urlParts.length - 1];
+  const isCancel = lastPart === 'cancel';
+  const idPart = isCancel ? urlParts[urlParts.length - 2] : lastPart;
+
+  if (req.method === 'POST' && lastPart === 'bookings') {
+    return createBooking(req, res);
+  } else if (req.method === 'GET' && lastPart === 'bookings') {
+    return getUserBookings(req, res);
+  } else if (req.method === 'PUT' && isCancel) {
+    req.params = { id: idPart };
+    return cancelBooking(req, res);
+  }
+
+  return res.status(404).json({ error: 'Not Found' });
+}
 
 async function createBooking(req, res) {
   try {
@@ -27,13 +48,10 @@ async function createBooking(req, res) {
       "INSERT INTO bookings (user_id, package_id, travelers, travel_date, total_price, status, special_requests) VALUES (?, ?, ?, ?, ?, 'confirmed', ?)",
       [req.user.id, package_id, numTravelers, travel_date, totalPrice, special_requests || null]
     );
-    saveDb();
 
-    // Get the last inserted booking ID using sql.js compatible method
     const idResult = db.exec("SELECT MAX(id) as id FROM bookings WHERE user_id = ?", [req.user.id]);
     const bookingId = idResult[0].values[0][0];
 
-    // Return a constructed booking object instead of JOIN query (more reliable with sql.js)
     const booking = {
       id: bookingId,
       user_id: req.user.id,
@@ -92,12 +110,9 @@ async function cancelBooking(req, res) {
     }
 
     db.run("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [req.params.id]);
-    saveDb();
 
     res.json({ message: 'Booking cancelled successfully.' });
   } catch (err) {
     res.status(500).json({ error: 'Server error.' });
   }
 }
-
-module.exports = { createBooking, getUserBookings, cancelBooking };

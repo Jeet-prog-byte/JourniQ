@@ -1,7 +1,27 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { getDb, saveDb } = require('../config/db');
-const { JWT_SECRET } = require('../middleware/auth');
+const { getDb, saveDb } = require('./config/db');
+const { JWT_SECRET, authMiddleware } = require('./middleware/auth');
+
+export default async function handler(req, res) {
+  // Parse the action from the URL path.
+  // URL comes in as /api/auth/register, /api/auth/login, etc. because of vercel rewrites
+  const urlParts = req.url.split('?')[0].split('/');
+  const action = urlParts[urlParts.length - 1]; // 'register', 'login', 'me', 'profile'
+
+  if (req.method === 'POST' && action === 'register') return register(req, res);
+  if (req.method === 'POST' && action === 'login') return login(req, res);
+  if (req.method === 'GET' && action === 'me') {
+    if (!authMiddleware(req, res)) return;
+    return getProfile(req, res);
+  }
+  if (req.method === 'PUT' && action === 'profile') {
+    if (!authMiddleware(req, res)) return;
+    return updateProfile(req, res);
+  }
+
+  return res.status(404).json({ error: 'Not Found' });
+}
 
 async function register(req, res) {
   try {
@@ -25,7 +45,7 @@ async function register(req, res) {
     const hashedPassword = await bcrypt.hash(password, 10);
     db.run("INSERT INTO users (name, email, password, phone) VALUES (?, ?, ?, ?)", 
       [name, email, hashedPassword, phone || null]);
-    saveDb();
+    // saveDb(); disabled or handles internally
 
     const result = db.exec("SELECT id, name, email, role, phone, created_at FROM users WHERE email = ?", [email]);
     const user = {
@@ -108,7 +128,7 @@ async function updateProfile(req, res) {
 
     db.run("UPDATE users SET name = COALESCE(?, name), phone = COALESCE(?, phone), avatar = COALESCE(?, avatar) WHERE id = ?",
       [name || null, phone || null, avatar || null, req.user.id]);
-    saveDb();
+    // saveDb();
 
     const result = db.exec("SELECT id, name, email, role, phone, avatar, created_at FROM users WHERE id = ?", [req.user.id]);
     const row = result[0].values[0];
@@ -121,5 +141,3 @@ async function updateProfile(req, res) {
     res.status(500).json({ error: 'Server error.' });
   }
 }
-
-module.exports = { register, login, getProfile, updateProfile };

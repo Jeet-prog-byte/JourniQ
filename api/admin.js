@@ -1,4 +1,35 @@
-const { getDb, saveDb } = require('../config/db');
+const { getDb } = require('./config/db');
+const { authMiddleware, adminMiddleware } = require('./middleware/auth');
+
+export default async function handler(req, res) {
+  if (!authMiddleware(req, res)) return;
+  if (!adminMiddleware(req, res)) return;
+
+  const urlParts = req.url.split('?')[0].split('/').filter(Boolean);
+  const action = urlParts[2]; // assuming /api/admin/action or similar mapping. wait, if URL is /api/admin/stats, index depends on mount.
+  // better: find the index of 'admin' and take the next part.
+  const adminIndex = urlParts.indexOf('admin');
+  const target = adminIndex !== -1 && urlParts.length > adminIndex + 1 ? urlParts[adminIndex + 1] : null;
+  const id = adminIndex !== -1 && urlParts.length > adminIndex + 2 ? urlParts[adminIndex + 2] : null;
+
+  if (req.method === 'GET' && target === 'stats') return getStats(req, res);
+  if (req.method === 'GET' && target === 'bookings') return getAllBookings(req, res);
+  if (req.method === 'GET' && target === 'users') return getAllUsers(req, res);
+  
+  if (target === 'packages') {
+    if (req.method === 'POST') return createPackage(req, res);
+    if (req.method === 'PUT' && id) {
+      req.params = { id };
+      return updatePackage(req, res);
+    }
+    if (req.method === 'DELETE' && id) {
+      req.params = { id };
+      return deletePackage(req, res);
+    }
+  }
+
+  return res.status(404).json({ error: 'Not Found' });
+}
 
 async function getStats(req, res) {
   try {
@@ -66,7 +97,6 @@ async function createPackage(req, res) {
       [title, destination, description || '', price, duration, max_travelers || 20, category || 'adventure',
        image_url || '', JSON.stringify(gallery || []), JSON.stringify(itinerary || []), JSON.stringify(included || []), is_featured ? 1 : 0]
     );
-    saveDb();
 
     res.status(201).json({ message: 'Package created successfully.' });
   } catch (err) {
@@ -98,7 +128,6 @@ async function updatePackage(req, res) {
        gallery ? JSON.stringify(gallery) : null, itinerary ? JSON.stringify(itinerary) : null,
        included ? JSON.stringify(included) : null, is_featured !== undefined ? (is_featured ? 1 : 0) : null, req.params.id]
     );
-    saveDb();
 
     res.json({ message: 'Package updated successfully.' });
   } catch (err) {
@@ -110,7 +139,6 @@ async function deletePackage(req, res) {
   try {
     const db = await getDb();
     db.run("DELETE FROM packages WHERE id = ?", [req.params.id]);
-    saveDb();
     res.json({ message: 'Package deleted successfully.' });
   } catch (err) {
     res.status(500).json({ error: 'Server error.' });
@@ -136,5 +164,3 @@ async function getAllUsers(req, res) {
     res.status(500).json({ error: 'Server error.' });
   }
 }
-
-module.exports = { getStats, getAllBookings, createPackage, updatePackage, deletePackage, getAllUsers };
