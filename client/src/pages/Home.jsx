@@ -11,14 +11,22 @@ const testimonials = [
 
 export default function Home() {
   const [featured, setFeatured] = useState([]);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [featuredError, setFeaturedError] = useState(false);
   const [searchDest, setSearchDest] = useState('');
   const [searchCategory, setSearchCategory] = useState('');
   const [searchBudget, setSearchBudget] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.getFeaturedPackages().then(setFeatured).catch(console.error);
+    setFeaturedLoading(true);
+    setFeaturedError(false);
+    api.getFeaturedPackages()
+      .then(data => { setFeatured(data || []); })
+      .catch(() => setFeaturedError(true))
+      .finally(() => setFeaturedLoading(false));
   }, []);
+
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -118,9 +126,28 @@ export default function Home() {
             <p className="section-subtitle">Handpicked travel experiences loved by our travelers</p>
           </div>
           <div className="packages-grid">
-            {featured.map(pkg => (
-              <PackageCard key={pkg.id} pkg={pkg} />
-            ))}
+            {featuredLoading ? (
+              <div className="loading-container" style={{ gridColumn: '1 / -1', minHeight: '200px' }}>
+                <div className="spinner"></div>
+                <p className="loading-text">Loading destinations...</p>
+              </div>
+            ) : featuredError ? (
+              <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
+                <div className="icon">⚠️</div>
+                <h3>Could not load destinations</h3>
+                <p>Please check your connection and try again.</p>
+              </div>
+            ) : featured.length === 0 ? (
+              <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
+                <div className="icon">🌍</div>
+                <h3>Destinations coming soon</h3>
+                <p>We're curating the world's best experiences for you.</p>
+              </div>
+            ) : (
+              featured.map(pkg => (
+                <PackageCard key={pkg.id} pkg={pkg} />
+              ))
+            )}
           </div>
           <div style={{ textAlign: 'center', marginTop: '48px' }}>
             <Link to="/packages" className="btn btn-secondary btn-lg">View All Packages →</Link>

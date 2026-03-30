@@ -8,6 +8,7 @@ export default function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [toast, setToast] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalForm, setModalForm] = useState({
@@ -22,6 +23,7 @@ export default function AdminPanel() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const [statsData, bookingsData, usersData, packagesData] = await Promise.all([
         api.getStats(),
         api.getAllBookings(),
@@ -29,11 +31,12 @@ export default function AdminPanel() {
         api.getPackages()
       ]);
       setStats(statsData);
-      setBookings(bookingsData);
-      setUsers(usersData);
-      setPackages(packagesData);
+      setBookings(bookingsData || []);
+      setUsers(usersData || []);
+      setPackages(packagesData || []);
     } catch (err) {
       console.error(err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -82,7 +85,15 @@ export default function AdminPanel() {
     { key: 'users', icon: '👥', label: 'Users' },
   ];
 
-  if (loading) return <div className="loading-container" style={{ minHeight: '100vh' }}><div className="spinner"></div></div>;
+  if (loading) return <div className="loading-container" style={{ minHeight: '100vh' }}><div className="spinner"></div><p className="loading-text">Loading admin panel...</p></div>;
+  if (loadError) return (
+    <div className="empty-state" style={{ minHeight: '100vh', paddingTop: '120px' }}>
+      <div className="icon">⚠️</div>
+      <h3>Failed to load admin data</h3>
+      <p>There was a problem connecting to the server. Please try again.</p>
+      <button className="btn btn-primary" onClick={loadData}>Retry</button>
+    </div>
+  );
 
   return (
     <div className="admin-layout" id="admin-page">

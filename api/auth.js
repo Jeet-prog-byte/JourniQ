@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { getDb, saveDb } = require('./config/db');
+const { getDb, saveDb } = require('./lib/db');
 const { JWT_SECRET, authMiddleware } = require('./middleware/auth');
 
 export default async function handler(req, res) {

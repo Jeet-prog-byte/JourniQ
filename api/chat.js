@@ -1,5 +1,5 @@
 const { GoogleGenAI } = require('@google/genai');
-const { getDb } = require('./config/db');
+const { getDb } = require('./lib/db');
 
 // Retrieve all packages function
 async function getAllPackagesContext() {

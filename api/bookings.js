@@ -1,4 +1,4 @@
-const { getDb, saveDb } = require('./config/db');
+const { getDb, saveDb } = require('./lib/db');
 const { authMiddleware } = require('./middleware/auth');
 
 export default async function handler(req, res) {

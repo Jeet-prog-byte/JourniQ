@@ -10,6 +10,7 @@ export default function PackageDetails() {
   const [pkg, setPkg] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
   const [travelers, setTravelers] = useState(1);
   const [travelDate, setTravelDate] = useState('');
@@ -26,14 +27,16 @@ export default function PackageDetails() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const [pkgData, reviewData] = await Promise.all([
         api.getPackageById(id),
         api.getReviews(id)
       ]);
       setPkg(pkgData);
-      setReviews(reviewData);
+      setReviews(reviewData || []);
     } catch (err) {
       console.error(err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -90,7 +93,15 @@ export default function PackageDetails() {
   };
 
   if (loading) return <div className="loading-container" style={{ minHeight: '100vh' }}><div className="spinner"></div><p className="loading-text">Loading package...</p></div>;
-  if (!pkg) return <div className="empty-state" style={{ minHeight: '100vh', paddingTop: '120px' }}><h3>Package not found</h3></div>;
+  if (loadError) return (
+    <div className="empty-state" style={{ minHeight: '100vh', paddingTop: '120px' }}>
+      <div className="icon">⚠️</div>
+      <h3>Unable to load package</h3>
+      <p>There was a problem connecting. Please try again.</p>
+      <button className="btn btn-primary" onClick={loadData}>Retry</button>
+    </div>
+  );
+  if (!pkg) return <div className="empty-state" style={{ minHeight: '100vh', paddingTop: '120px' }}><div className="icon">🔍</div><h3>Package not found</h3><p>This package may have been removed or the link is incorrect.</p></div>;
 
   const gallery = Array.isArray(pkg.gallery) ? pkg.gallery : [];
   const itinerary = Array.isArray(pkg.itinerary) ? pkg.itinerary : [];

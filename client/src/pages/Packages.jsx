@@ -15,6 +15,7 @@ const categories = [
 export default function Packages() {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   
   const [search, setSearch] = useState(searchParams.get('search') || '');
@@ -38,6 +39,7 @@ export default function Packages() {
   const fetchPackages = async () => {
     try {
       setLoading(true);
+      setFetchError(false);
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (category) params.set('category', category);
@@ -45,9 +47,10 @@ export default function Packages() {
       if (sort) params.set('sort', sort);
       
       const data = await api.getPackages(params.toString());
-      setPackages(data);
+      setPackages(data || []);
     } catch (err) {
       console.error(err);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -152,6 +155,13 @@ export default function Packages() {
               <div className="loading-container">
                 <div className="spinner"></div>
                 <p className="loading-text">Loading packages...</p>
+              </div>
+            ) : fetchError ? (
+              <div className="empty-state">
+                <div className="icon">⚠️</div>
+                <h3>Could not load packages</h3>
+                <p>There was a problem connecting to the server. Please try again.</p>
+                <button className="btn btn-primary" onClick={fetchPackages}>Retry</button>
               </div>
             ) : packages.length === 0 ? (
               <div className="empty-state">

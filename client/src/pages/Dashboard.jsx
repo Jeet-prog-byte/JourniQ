@@ -8,6 +8,7 @@ export default function Dashboard() {
   const location = useLocation();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bookingsError, setBookingsError] = useState(false);
   const [tab, setTab] = useState(location.hash === '#profile' ? 'profile' : 'bookings');
   const [toast, setToast] = useState(null);
   const [profileForm, setProfileForm] = useState({ name: '', phone: '' });
@@ -27,10 +28,12 @@ export default function Dashboard() {
 
   const loadBookings = async () => {
     try {
+      setBookingsError(false);
       const data = await api.getBookings();
-      setBookings(data);
+      setBookings(data || []);
     } catch (err) {
       console.error(err);
+      setBookingsError(true);
     } finally {
       setLoading(false);
     }
@@ -122,6 +125,13 @@ export default function Dashboard() {
           <div className="dashboard-section">
             {loading ? (
               <div className="loading-container"><div className="spinner"></div></div>
+            ) : bookingsError ? (
+              <div className="empty-state">
+                <div className="icon">⚠️</div>
+                <h3>Could not load bookings</h3>
+                <p>There was a problem fetching your trips. Please try again.</p>
+                <button className="btn btn-primary" onClick={loadBookings}>Retry</button>
+              </div>
             ) : bookings.length === 0 ? (
               <div className="empty-state">
                 <div className="icon">🧳</div>
